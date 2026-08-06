@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b5cab">
+  <meta name="description" content="基于 ClinicalTrials.gov 公开数据的全球临床试验结构化查询与跟进工具。">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta property="og:title" content="全球临床试验公开信息查询平台">
+  <meta property="og:description" content="查询疾病、申办方、执行机构及临床试验最新公开进展。">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="./assets/og-card.svg">
+  <title>全球临床试验公开信息查询平台</title>
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./assets/css/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content" data-i18n="skipLink">跳到主要内容</a>
+
+  <header class="site-header">
+    <div class="header-inner container">
+      <a class="brand" href="#/trials" aria-label="返回临床试验公示列表" data-i18n-aria-label="brandAria">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 44 44" role="img"><path d="M22 4a18 18 0 1 0 0 36 18 18 0 0 0 0-36Zm0 4c2.5 0 4.9.6 7 1.7-1.7 1.6-4 2.6-7 2.6s-5.3-1-7-2.6A13.9 13.9 0 0 1 22 8Zm-10.1 5.2c2.5 2 5.9 3.1 10.1 3.1s7.6-1.1 10.1-3.1a14 14 0 0 1 3.6 8.8H8.3a14 14 0 0 1 3.6-8.8ZM22 36c-2.5 0-4.9-.6-7-1.7 1.7-1.6 4-2.6 7-2.6s5.3 1 7 2.6A13.9 13.9 0 0 1 22 36Zm10.1-5.2c-2.5-2-5.9-3.1-10.1-3.1s-7.6 1.1-10.1 3.1A14 14 0 0 1 8.3 26h27.4a14 14 0 0 1-3.6 4.8Z"/></svg>
+        </span>
+        <span class="brand-copy">
+          <strong data-i18n="brandTitle">全球临床试验公示牌</strong>
+          <small data-i18n="brandSub">公开信息查询平台</small>
+        </span>
+      </a>
+
+      <nav class="desktop-nav" aria-label="主导航">
+        <a href="#/trials" data-nav="trials" data-i18n="navTrials">公示列表</a>
+        <a href="#/following" data-nav="following"><span data-i18n="navFollowing">我的关注</span> <span id="favorite-count-badge" class="nav-badge" hidden>0</span></a>
+        <a href="#/guide" data-nav="guide" data-i18n="navGuide">阅读说明</a>
+      </nav>
+
+      <div class="header-actions">
+        <button id="language-toggle" class="language-toggle" type="button" aria-label="Switch language" title="Switch language">EN</button>
+        <button id="refresh-button" class="icon-button" type="button" title="重新同步最新数据" aria-label="重新同步最新数据" data-i18n-title="refresh" data-i18n-aria-label="refresh">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-14.7-4.7L3 9m0 0V4m0 5h5m-4 4a8.1 8.1 0 0 0 14.7 4.7L21 15m0 0v5m0-5h-5"/></svg>
+        </button>
+        <button id="mobile-menu-button" class="icon-button mobile-only" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="打开导航菜单" data-i18n-aria-label="menuOpen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+      </div>
+    </div>
+    <nav id="mobile-menu" class="mobile-menu container" aria-label="移动端导航" hidden>
+      <a href="#/trials" data-i18n="navTrials">公示列表</a>
+      <a href="#/following" data-i18n="navFollowing">我的关注</a>
+      <a href="#/guide" data-i18n="navGuide">阅读说明</a>
+    </nav>
+  </header>
+
+  <main id="main-content">
+    <section id="trials-view" class="view" data-view="trials">
+      <div class="hero-shell">
+        <div class="container hero">
+          <div class="hero-copy">
+            <p class="eyebrow" data-i18n="heroEyebrow">ClinicalTrials.gov 公开数据 · 访问时同步</p>
+            <h1 data-i18n="heroTitle">把复杂的临床试验登记信息，整理成普通人能查、能读、能核对的公示页面</h1>
+            <p class="hero-summary" data-i18n="heroSummary">按疾病、药企、医院或 NCT 编号检索，查看申办方、执行中心、研究阶段、治疗方案、公开联系方式及最近更新时间。</p>
+          </div>
+
+          <form id="search-form" class="search-panel" role="search" autocomplete="off">
+            <label class="search-field" for="search-input">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.4-4.4m2.4-5.1a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z"/></svg>
+              <input id="search-input" name="query" type="search" maxlength="160" placeholder="输入疾病、药企、医院、药物或 NCT 编号" aria-describedby="search-help" data-i18n-placeholder="searchPlaceholder">
+            </label>
+            <button class="primary-button search-button" type="submit" data-i18n="searchButton">查询公示</button>
+            <p id="search-help" class="search-help" data-i18n="searchHelp">支持英文原始关键词。输入中文常见疾病时，系统会尝试转换为对应英文检索词。</p>
+          </form>
+
+          <div class="sync-strip" aria-live="polite">
+            <div class="sync-primary">
+              <span id="sync-indicator" class="sync-dot" data-state="idle"></span>
+              <strong id="sync-status">准备同步公开数据</strong>
+              <span id="sync-detail">—</span>
+            </div>
+            <div class="sync-meta">
+              <span><span data-i18n="sourceTime">官方数据时间：</span><b id="source-timestamp">待获取</b></span>
+              <span><span data-i18n="cacheLabel">本地缓存：</span><b id="cache-status">未使用</b></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="container stats-grid" aria-label="当前查询概览">
+        <article class="stat-card">
+          <span class="stat-label" data-i18n="statTotal">官方匹配结果</span>
+          <strong id="stat-total">—</strong>
+          <small data-i18n="statTotalHelp">由 API 返回的总数</small>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label" data-i18n="statRecruiting">当前页招募中</span>
+          <strong id="stat-recruiting">—</strong>
+          <small data-i18n="statLoadedHelp">仅统计已加载记录</small>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label" data-i18n="statCountries">涉及国家/地区</span>
+          <strong id="stat-countries">—</strong>
+          <small data-i18n="statLoadedHelp">仅统计已加载记录</small>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label" data-i18n="statRecent">最近30天更新</span>
+          <strong id="stat-recent">—</strong>
+          <small data-i18n="statLoadedHelp">仅统计已加载记录</small>
+        </article>
+      </div>
+
+      <div class="container main-grid">
+        <aside class="filters-panel" aria-label="筛选条件">
+          <div class="panel-heading">
+            <div>
+              <span class="panel-kicker" data-i18n="filterKicker">结构化筛选</span>
+              <h2 data-i18n="filterTitle">缩小公示范围</h2>
+            </div>
+            <button id="reset-filters" class="text-button" type="button" data-i18n="reset">重置</button>
+          </div>
+
+          <div class="filter-group">
+            <label for="status-filter" data-i18n="statusFilter">公开状态</label>
+            <select id="status-filter">
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="phase-filter" data-i18n="phaseFilter">研究分期</label>
+            <select id="phase-filter">
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="country-filter" data-i18n="countryFilter">执行国家/地区</label>
+            <select id="country-filter">
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="sponsor-filter" data-i18n="sponsorFilter">申办方类型</label>
+            <select id="sponsor-filter">
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="sort-filter" data-i18n="sortFilter">当前页排序</label>
+            <select id="sort-filter">
+            </select>
+          </div>
+
+          <div class="filter-note">
+            <strong data-i18n="filterNoteTitle">筛选说明</strong>
+            <p data-i18n="filterNoteBody">公开状态会直接参与 API 查询；分期、国家和申办方类型针对当前已加载记录进一步筛选。</p>
+          </div>
+        </aside>
+
+        <section class="results-section" aria-labelledby="results-title">
+          <div class="results-toolbar">
+            <div>
+              <span class="panel-kicker" data-i18n="resultsKicker">公开登记记录</span>
+              <h2 id="results-title" data-i18n="resultsTitle">临床试验公示列表</h2>
+              <p id="results-summary">正在准备数据……</p>
+            </div>
+            <button id="mobile-filter-button" class="secondary-button mobile-filter-button" type="button" data-i18n="mobileFilter">筛选</button>
+          </div>
+
+          <div id="active-filter-chips" class="filter-chips" aria-label="已启用筛选条件"></div>
+          <div id="results-alert" class="results-alert" role="status" hidden></div>
+          <div id="trial-list" class="trial-list" aria-live="polite"></div>
+
+          <div class="load-more-wrap">
+            <button id="load-more-button" class="secondary-button" type="button" hidden>加载更多公示记录</button>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="following-view" class="view container inner-view" data-view="following" hidden>
+      <header class="inner-header">
+        <div>
+          <p class="eyebrow" data-i18n="followingEyebrow">仅保存在当前浏览器</p>
+          <h1 data-i18n="followingTitle">我的关注</h1>
+          <p data-i18n="followingIntro">收藏内容不会上传到服务器，也不会收集您的疾病或身份信息。打开本页时会尝试刷新已收藏试验的最新公开状态。</p>
+        </div>
+        <button id="refresh-favorites-button" class="secondary-button" type="button" data-i18n="refreshFavorites">刷新关注状态</button>
+      </header>
+      <div id="favorites-summary" class="following-summary"></div>
+      <div id="favorites-list" class="trial-list"></div>
+    </section>
+
+    <section id="guide-view" class="view container inner-view" data-view="guide" hidden>
+      <header class="inner-header guide-header">
+        <div>
+          <p class="eyebrow" data-i18n="guideEyebrow">阅读与使用边界</p>
+          <h1 data-i18n="guideTitle">如何正确理解临床试验公示信息</h1>
+          <p data-i18n="guideIntro">本平台帮助整理公开登记字段，但不会判断任何人是否适合参加试验，也不替代医院、研究者或申办方的正式说明。</p>
+        </div>
+      </header>
+
+      <div class="guide-grid">
+        <article class="guide-card">
+          <span class="guide-number">01</span>
+          <h2 data-i18n="guide01Title">“招募中”不是入组承诺</h2>
+          <p data-i18n="guide01Body">它表示登记记录的总体状态。某个具体医院可能尚未启动、已经停止招募，或联系方式尚未公开。</p>
+        </article>
+        <article class="guide-card">
+          <span class="guide-number">02</span>
+          <h2 data-i18n="guide02Title">“计划人数”不是实际人数</h2>
+          <p data-i18n="guide02Body">只有官方字段明确标记为 Actual 时，才能理解为公开的实际入组人数；Estimated 表示计划值。</p>
+        </article>
+        <article class="guide-card">
+          <span class="guide-number">03</span>
+          <h2 data-i18n="guide03Title">试验分期不等于疗效等级</h2>
+          <p data-i18n="guide03Body">分期主要反映研究所处的开发阶段和研究目的，不能简单解释为药物“更好”或“更差”。</p>
+        </article>
+        <article class="guide-card">
+          <span class="guide-number">04</span>
+          <h2 data-i18n="guide04Title">英文原文具有优先效力</h2>
+          <p data-i18n="guide04Body">中文标签和通俗说明用于辅助理解。如与官方英文记录存在差异，应以 ClinicalTrials.gov 最新原始页面为准。</p>
+        </article>
+      </div>
+
+      <div class="policy-panel">
+        <h2 data-i18n="policyTitle">数据与隐私说明</h2>
+        <div class="policy-columns">
+          <div>
+            <h3 data-i18n="policyDoTitle">平台会做什么</h3>
+            <ul>
+              <li data-i18n="policyDo1">访问时查询 ClinicalTrials.gov 公开 API。</li>
+              <li data-i18n="policyDo2">把公开字段整理成更容易阅读的卡片和详情页。</li>
+              <li data-i18n="policyDo3">在浏览器本地缓存最近成功查询的数据。</li>
+              <li data-i18n="policyDo4">将收藏记录保存在当前浏览器本地。</li>
+            </ul>
+          </div>
+          <div>
+            <h3 data-i18n="policyDontTitle">平台不会做什么</h3>
+            <ul>
+              <li data-i18n="policyDont1">不收集姓名、电话、病历或基因检测结果。</li>
+              <li data-i18n="policyDont2">不进行资格筛选、智能匹配或一键报名。</li>
+              <li data-i18n="policyDont3">不提供诊断、用药和治疗建议。</li>
+              <li data-i18n="policyDont4">不保证公开联系人仍然有效。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <strong data-i18n="siteTitle">全球临床试验公开信息查询平台</strong>
+        <p data-i18n="footerSummary">基于 ClinicalTrials.gov 公开登记数据进行结构化整理。</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://clinicaltrials.gov/" target="_blank" rel="noopener noreferrer" data-i18n="officialSource">访问官方数据源</a>
+        <a href="#/guide" data-i18n="disclaimerLink">免责声明与隐私说明</a>
+        <button id="clear-local-data" class="footer-button" type="button" data-i18n="clearLocalData">清除本地缓存与收藏</button>
+      </div>
+    </div>
+    <div class="container footer-disclaimer">
+      <span data-i18n="footerDisclaimer">本网站仅提供公开信息查询，不构成医疗建议、试验推荐、资格判断或报名保证。试验状态、执行中心和联系方式可能发生变化，请以官方登记记录及研究机构正式通知为准。</span>
+    </div>
+  </footer>
+
+  <div id="mobile-filter-drawer" class="drawer" aria-hidden="true">
+    <button class="drawer-backdrop" type="button" aria-label="关闭筛选面板" data-i18n-aria-label="closeFilter"></button>
+    <div class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+      <div class="drawer-header">
+        <h2 id="drawer-title" data-i18n="drawerTitle">筛选公示记录</h2>
+        <button class="icon-button drawer-close" type="button" aria-label="关闭筛选面板" data-i18n-aria-label="closeFilter">×</button>
+      </div>
+      <div id="mobile-filter-content"></div>
+      <div class="drawer-actions">
+        <button id="mobile-reset-filters" class="secondary-button" type="button" data-i18n="reset">重置</button>
+        <button id="mobile-apply-filters" class="primary-button" type="button" data-i18n="mobileApply">查看结果</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="detail-modal" class="modal" aria-hidden="true">
+    <button class="modal-backdrop" type="button" aria-label="关闭详情" data-i18n-aria-label="closeDetail"></button>
+    <article class="detail-sheet" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+      <header class="detail-sheet-header">
+        <div>
+          <span id="detail-nct" class="detail-nct">NCT</span>
+          <h2 id="detail-title" data-i18n="detailTitle">临床试验详情</h2>
+        </div>
+        <button class="icon-button modal-close" type="button" aria-label="关闭详情" data-i18n-aria-label="closeDetail">×</button>
+      </header>
+      <div id="detail-content" class="detail-content"></div>
+    </article>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <noscript>
+    <div class="noscript" data-i18n="noScript">本网站需要启用 JavaScript 才能查询 ClinicalTrials.gov 公开数据。</div>
+  </noscript>
+
+  <script type="module" src="./assets/js/app.js"></script>
+</body>
+</html>
