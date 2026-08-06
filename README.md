@@ -23,7 +23,7 @@
 8. 收藏试验仅保存在浏览器，重新打开“我的关注”时可刷新状态。
 9. 响应式桌面端与手机端界面。
 10. 中英文界面切换，包含导航、筛选、列表卡片、详情字段、收藏页、阅读说明和提示消息。
-11. 中文界面对官网返回的英文标题、疾病、摘要、治疗方案、入排标准和结局指标显示中文参考译文。
+11. 中文界面对官网返回的英文标题、疾病、摘要、研究分组、干预方案、入排标准和结局指标显示中文参考译文；无法核验的字段只显示纯中文提示，不显示中英夹杂的半成品翻译。
 12. PWA 壳缓存，静态页面可离线打开；临床试验数据仍需网络或已有本地缓存。
 
 ## 实时更新机制
@@ -38,11 +38,102 @@
 
 这意味着页面展示的是 ClinicalTrials.gov 已经公开更新的数据，不代表源站数据会每秒变化。
 
+## 直接部署到 GitHub Pages
+
+### 方法一：使用内置 GitHub Actions
+
+1. 新建一个 GitHub 仓库。
+2. 将本目录全部文件上传到仓库根目录。
+3. 确保默认分支名称为 `main`。
+4. 打开仓库 `Settings → Pages`。
+5. 在 `Build and deployment` 中将 Source 选择为 `GitHub Actions`。
+6. 推送代码后，`.github/workflows/deploy-pages.yml` 会自动发布网站。
+
+### 方法二：直接从分支发布
+
+1. 将全部文件上传到仓库根目录。
+2. 打开 `Settings → Pages`。
+3. Source 选择 `Deploy from a branch`。
+4. Branch 选择 `main`，目录选择 `/ (root)`。
+5. 保存并等待 GitHub Pages 生成访问地址。
+
+## 本地预览
+
+不要直接双击 `index.html`，ES Modules 在 `file://` 模式下可能被浏览器限制。
+
+```bash
+python3 -m http.server 8080
+```
+
+浏览器打开：
+
+```text
+http://localhost:8080
+```
+
+也可运行：
+
+```bash
+npm run serve
+```
+
+## 测试与审计
+
+项目没有运行时第三方依赖。需要 Node.js 20 或更高版本执行测试：
+
+```bash
+npm run check
+```
+
+该命令包括：
+
+- ClinicalTrials.gov V2 字段标准化测试；
+- 中文常见疾病查询词转换测试；
+- 国家、申办方过滤与排序测试；
+- GitHub Pages 相对路径、HTML 语义和必需文件审计。
+
+## 目录结构
+
+```text
+.
+├── index.html                     # 单页应用入口
+├── 404.html                       # GitHub Pages 回退页面
+├── manifest.webmanifest           # PWA 配置
+├── sw.js                          # 静态资源缓存
+├── assets/
+│   ├── css/styles.css             # 响应式视觉样式
+│   ├── js/app.js                  # 页面状态、渲染和交互
+│   ├── js/api.js                  # ClinicalTrials.gov API 请求
+│   ├── js/normalizer.js           # V2 数据字段标准化
+│   ├── js/dictionary.js           # 中文标签与常见查询词
+│   ├── js/storage.js              # 本地缓存和收藏
+│   └── *.svg                      # 图标和分享图
+├── docs/                          # 架构、部署、字段映射和测试说明
+├── tests/                         # 无网络单元测试与固定样例
+└── .github/workflows/             # GitHub Pages 自动发布
+```
+
+## 配置
+
+主要配置位于：
+
+```text
+assets/js/config.js
+```
+
+可调整：
+
+- API 地址；
+- 每页加载数量；
+- 本地缓存有效期；
+- 请求超时时间；
+- 默认排序方式。
+
 ## 重要限制
 
 1. 页面直接访问 ClinicalTrials.gov API，能否成功取决于用户网络、源站可用性及浏览器跨域策略。
 2. 如果未来源站收紧跨域访问，需要增加 Cloudflare Workers、Vercel Function 或自建代理；GitHub Pages 本身不能运行服务端代理。
-3. ClinicalTrials.gov 内容多数为英文。本项目翻译界面文案、字段标签、状态、分期和常见查询词；中文界面对英文原文提供基于内置临床术语表的参考译文，正式含义仍应以 ClinicalTrials.gov 官方英文原文为准。
+3. ClinicalTrials.gov 内容多数为英文。本项目翻译界面文案、字段标签、状态、分期和常见查询词；中文界面对英文原文提供基于内置临床术语表的参考译文，并在翻译不完整时避免显示中英混杂内容，正式含义仍应以 ClinicalTrials.gov 官方英文原文为准。
 4. “疗程”不是 ClinicalTrials.gov 的统一标准字段。本项目只能从干预措施和研究分组描述中提取可识别的时间片段。
 5. 联系方式可能为空、过期或仅适用于特定执行中心。
 

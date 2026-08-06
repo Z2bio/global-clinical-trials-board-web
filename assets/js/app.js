@@ -22,7 +22,7 @@ import {
   matchesClientFilters,
   sortStudies
 } from './normalizer.js'
-import { chineseReference, inlineChineseName } from './translator.js'
+import { chineseReference, inlineChineseName, needsChineseReference } from './translator.js'
 
 const state = {
   query: '',
@@ -91,7 +91,53 @@ function tr(key, params = {}) {
 }
 
 function displayValue(value) {
+  const normalized = String(value ?? '').trim()
+  if (state.language === 'zh-CN' && /^(?:n\/a|na|not applicable)$/i.test(normalized)) return '不适用'
   return localizeUnknown(state.language, value)
+}
+
+const COUNTRY_LABELS = {
+  'United States': '美国',
+  'United Kingdom': '英国',
+  Canada: '加拿大',
+  Australia: '澳大利亚',
+  China: '中国',
+  Japan: '日本',
+  Germany: '德国',
+  France: '法国',
+  Italy: '意大利',
+  Spain: '西班牙',
+  Netherlands: '荷兰',
+  Switzerland: '瑞士',
+  Sweden: '瑞典',
+  Denmark: '丹麦',
+  Norway: '挪威',
+  Finland: '芬兰',
+  Belgium: '比利时',
+  Austria: '奥地利',
+  Ireland: '爱尔兰',
+  India: '印度',
+  Pakistan: '巴基斯坦',
+  Brazil: '巴西',
+  Mexico: '墨西哥',
+  'South Korea': '韩国',
+  'South Africa': '南非',
+  Israel: '以色列',
+  Turkey: '土耳其',
+  Singapore: '新加坡',
+  Taiwan: '中国台湾地区',
+  'Hong Kong': '中国香港地区'
+}
+
+function displayCountry(value) {
+  if (state.language !== 'zh-CN') return displayValue(value)
+  return COUNTRY_LABELS[value] || displayValue(value)
+}
+
+function displayAddress(value) {
+  const source = displayValue(value)
+  if (state.language !== 'zh-CN') return source
+  return Object.entries(COUNTRY_LABELS).reduce((output, [english, chinese]) => output.replaceAll(english, chinese), source)
 }
 
 function displayStatus(study) {
@@ -135,21 +181,40 @@ function numberText(value) {
   return Number.isFinite(number) ? new Intl.NumberFormat(state.language).format(number) : tr('none')
 }
 
-function chineseReferenceHtml(value, { compact = false } = {}) {
+function chineseReferenceHtml(value, { compact = false, required = false } = {}) {
   if (state.language !== 'zh-CN') return ''
+  if (!needsChineseReference(value)) return ''
   const translated = chineseReference(value)
-  if (!translated) return ''
+  if (!translated && !required) return ''
   return `
     <div class="zh-reference ${compact ? 'compact' : ''}">
-      <strong>${escapeHtml(tr('zhReferenceLabel'))}</strong>
-      ${compact ? '' : `<small>${escapeHtml(tr('zhReferenceNote'))}</small>`}
-      <p>${escapeHtml(translated)}</p>
+      <strong>${escapeHtml(translated ? tr('zhReferenceLabel') : '中文参考说明')}</strong>
+      ${compact ? '' : `<small>${escapeHtml(translated ? tr('zhReferenceNote') : tr('zhReferenceUnavailable'))}</small>`}
+      <p>${escapeHtml(translated || tr('zhReferenceUnavailable'))}</p>
     </div>
   `
 }
 
 function translatedListItem(value) {
-  return `<li><span>${escapeHtml(value)}</span>${chineseReferenceHtml(value, { compact: true })}</li>`
+  return `<li><span>${escapeHtml(value)}</span>${chineseReferenceHtml(value, { compact: true, required: true })}</li>`
+}
+
+function clinicalFieldHtml(value, { compact = true, required = false } = {}) {
+  return `${escapeHtml(displayValue(value))}${chineseReferenceHtml(value, { compact, required })}`
+}
+
+function displayArmType(value) {
+  const map = state.language === 'zh-CN'
+    ? { EXPERIMENTAL: '试验组', ACTIVE_COMPARATOR: '主动对照组', PLACEBO_COMPARATOR: '安慰剂对照组', NO_INTERVENTION: '无干预组', SHAM_COMPARATOR: '模拟对照组' }
+    : { EXPERIMENTAL: 'Experimental arm', ACTIVE_COMPARATOR: 'Active comparator', PLACEBO_COMPARATOR: 'Placebo comparator', NO_INTERVENTION: 'No intervention', SHAM_COMPARATOR: 'Sham comparator' }
+  return map[value] || displayValue(value) || tr('unknown')
+}
+
+function displayContactRole(value) {
+  const map = state.language === 'zh-CN'
+    ? { CONTACT: '联系人', PRINCIPAL_INVESTIGATOR: '主要研究者', SUB_INVESTIGATOR: '共同研究者' }
+    : { CONTACT: 'Contact', PRINCIPAL_INVESTIGATOR: 'Principal investigator', SUB_INVESTIGATOR: 'Sub-investigator' }
+  return map[value] || displayValue(value) || tr('unknown')
 }
 
 function inlineMedicalName(value) {
@@ -284,7 +349,7 @@ function updateCountryOptions() {
   const select = $('#country-filter')
   const countries = [...new Set(state.studies.flatMap((study) => study.countries))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'zh-CN'))
   const current = state.country
-  select.innerHTML = optionHtml('', tr('allCountries')) + countries.map((country) => optionHtml(country, country)).join('')
+  select.innerHTML = optionHtml('', tr('allCountries')) + countries.map((country) => optionHtml(country, displayCountry(country))).join('')
   if (countries.includes(current)) select.value = current
   else if (current) {
     state.country = ''
@@ -342,7 +407,7 @@ function localizedPlainSummary(study) {
 function renderCard(study, { favoriteContext = false } = {}) {
   const isFavorite = Boolean(state.favorites[study.nctId])
   const primaryFacility = study.facilities[0]
-  const countries = study.countries.length ? study.countries.join('、') : tr('unknown')
+  const countries = study.countries.length ? study.countries.map(displayCountry).join('、') : tr('unknown')
   const intervention = study.interventions[0]
   const duration = displayValue(study.durationSummary || intervention?.description)
   const favoriteChange = favoriteContext ? state.favorites[study.nctId]?.lastChange : null
@@ -364,14 +429,14 @@ function renderCard(study, { favoriteContext = false } = {}) {
           </button>
         </div>
         <h3 class="trial-title"><button type="button" data-open-detail="${escapeHtml(study.nctId)}">${escapeHtml(study.briefTitle)}</button></h3>
-        ${chineseReferenceHtml(study.briefTitle, { compact: true })}
+        ${chineseReferenceHtml(study.briefTitle, { compact: true, required: true })}
         <div class="trial-id">${escapeHtml(study.nctId)} · ${escapeHtml(tr('cardSponsor', { value: study.sponsor.name }))}</div>
         <p class="plain-summary">${escapeHtml(localizedPlainSummary(study))}</p>
         ${favoriteChange ? `<div class="results-alert" style="margin:12px 0 0" role="status">${escapeHtml(tr('change', { from: favoriteChange.from, to: favoriteChange.to }))}</div>` : ''}
         <div class="trial-facts">
           <div class="fact"><span class="fact-label">${escapeHtml(tr('condition'))}</span><span class="fact-value" title="${escapeHtml(study.conditions.join('、'))}">${escapeHtml(inlineMedicalList(study.conditions, 3))}</span></div>
           <div class="fact"><span class="fact-label">${escapeHtml(tr('facility'))}</span><span class="fact-value" title="${escapeHtml(primaryFacility?.name || tr('unknown'))}">${escapeHtml(primaryFacility?.name || tr('unknown'))}</span></div>
-          <div class="fact"><span class="fact-label">${escapeHtml(tr('interventionDuration'))}</span><span class="fact-value" title="${escapeHtml(duration)}">${escapeHtml(duration)}</span>${chineseReferenceHtml(duration, { compact: true })}</div>
+          <div class="fact"><span class="fact-label">${escapeHtml(tr('interventionDuration'))}</span><span class="fact-value" title="${escapeHtml(duration)}">${escapeHtml(duration)}</span>${chineseReferenceHtml(duration, { compact: true, required: true })}</div>
           <div class="fact"><span class="fact-label">${escapeHtml(tr('enrollment'))}</span><span class="fact-value">${escapeHtml(enrollmentText)}</span></div>
           <div class="fact"><span class="fact-label">${escapeHtml(tr('countries'))}</span><span class="fact-value" title="${escapeHtml(countries)}">${escapeHtml(countries)}</span></div>
           <div class="fact"><span class="fact-label">${escapeHtml(tr('contact'))}</span><span class="fact-value">${escapeHtml(study.centralContacts[0]?.name || primaryFacility?.contacts[0]?.name || tr('unknown'))}</span></div>
@@ -547,7 +612,7 @@ function contactHtml(contact) {
   return `
     <div class="detail-grid">
       <dl class="detail-item"><dt>${escapeHtml(tr('contact'))}</dt><dd>${escapeHtml(displayValue(contact.name))}</dd></dl>
-      <dl class="detail-item"><dt>${escapeHtml(tr('role'))}</dt><dd>${escapeHtml(displayValue(contact.role))}</dd></dl>
+      <dl class="detail-item"><dt>${escapeHtml(tr('role'))}</dt><dd>${escapeHtml(displayContactRole(contact.role))}</dd></dl>
       <dl class="detail-item"><dt>${escapeHtml(tr('phone'))}</dt><dd>${escapeHtml(displayValue(contact.phone))}${contact.phoneExt ? escapeHtml(tr('phoneExt', { ext: contact.phoneExt })) : ''}</dd></dl>
       <dl class="detail-item"><dt>${escapeHtml(tr('email'))}</dt><dd>${escapeHtml(displayValue(contact.email))}</dd></dl>
     </div>
@@ -588,19 +653,31 @@ function renderDetail(study) {
     ? study.interventions.map((item) => `
       <li class="intervention-item">
         <strong>${escapeHtml(displayValue(item.name))} · ${escapeHtml(displayInterventionType(item.type, item.typeLabel))}</strong>
+        ${chineseReferenceHtml(item.name, { compact: true, required: true })}
         <p>${escapeHtml(displayValue(item.description))}</p>
-        ${chineseReferenceHtml(item.description, { compact: true })}
+        ${chineseReferenceHtml(item.description, { compact: true, required: true })}
         ${item.otherNames.length ? `<p>${escapeHtml(tr('otherNames', { value: item.otherNames.join('、') }))}</p>` : ''}
       </li>
     `).join('')
     : `<li class="intervention-item"><p>${escapeHtml(tr('noIntervention'))}</p></li>`
+  const armGroups = study.armGroups.length
+    ? study.armGroups.map((item) => `
+      <li class="intervention-item">
+        <strong>${escapeHtml(displayValue(item.label))}${item.type ? ` · ${escapeHtml(displayArmType(item.type))}` : ''}</strong>
+        ${chineseReferenceHtml(item.label, { compact: true, required: true })}
+        <p>${escapeHtml(displayValue(item.description))}</p>
+        ${chineseReferenceHtml(item.description, { compact: true, required: true })}
+      </li>
+    `).join('')
+    : ''
   const facilities = study.facilities.length
     ? study.facilities.slice(0, 30).map((facility) => {
         const contact = facility.contacts[0]
         return `
           <li class="facility-item">
             <strong>${escapeHtml(facility.name)}</strong>
-            <p>${escapeHtml(displayValue(facility.address))}</p>
+            <p>${escapeHtml(displayAddress(facility.address))}</p>
+            ${chineseReferenceHtml(facility.address)}
             <div class="facility-meta">
               <span>${escapeHtml(tr('centerStatus', { value: statusMeta(state.language, facility.statusCode).label }))}</span>
               ${contact ? `<span>${escapeHtml(tr('centerContact', { value: displayValue(contact.name) }))}</span><span>${escapeHtml(tr('centerPhone', { value: displayValue(contact.phone) }))}</span><span>${escapeHtml(tr('centerEmail', { value: displayValue(contact.email) }))}</span>` : `<span>${escapeHtml(tr('noCenterContact'))}</span>`}
@@ -610,10 +687,10 @@ function renderDetail(study) {
       }).join('')
     : `<li class="facility-item"><p>${escapeHtml(tr('noFacilities'))}</p></li>`
   const primaryOutcomes = study.primaryOutcomes.length
-    ? study.primaryOutcomes.map((item) => `<li class="outcome-item"><strong>${escapeHtml(displayValue(item.measure))}</strong>${chineseReferenceHtml(item.measure, { compact: true })}<p>${escapeHtml(state.language === 'en' ? 'Time frame' : '时间范围')}：${escapeHtml(displayValue(item.timeFrame))}</p>${chineseReferenceHtml(item.timeFrame, { compact: true })}${item.description ? `<p>${escapeHtml(item.description)}</p>${chineseReferenceHtml(item.description, { compact: true })}` : ''}</li>`).join('')
+    ? study.primaryOutcomes.map((item) => `<li class="outcome-item"><strong>${escapeHtml(displayValue(item.measure))}</strong>${chineseReferenceHtml(item.measure, { compact: true, required: true })}<p>${escapeHtml(state.language === 'en' ? 'Time frame' : '时间范围')}：${escapeHtml(displayValue(item.timeFrame))}</p>${chineseReferenceHtml(item.timeFrame, { compact: true, required: true })}${item.description ? `<p>${escapeHtml(item.description)}</p>${chineseReferenceHtml(item.description, { compact: true, required: true })}` : ''}</li>`).join('')
     : `<li class="outcome-item"><p>${escapeHtml(state.language === 'en' ? 'Primary outcome measures are not disclosed.' : '未公开主要结局指标。')}</p></li>`
   const secondaryOutcomes = study.secondaryOutcomes.length
-    ? study.secondaryOutcomes.slice(0, 10).map((item) => `<li class="outcome-item"><strong>${escapeHtml(displayValue(item.measure))}</strong>${chineseReferenceHtml(item.measure, { compact: true })}<p>${escapeHtml(state.language === 'en' ? 'Time frame' : '时间范围')}：${escapeHtml(displayValue(item.timeFrame))}</p>${chineseReferenceHtml(item.timeFrame, { compact: true })}</li>`).join('')
+    ? study.secondaryOutcomes.slice(0, 10).map((item) => `<li class="outcome-item"><strong>${escapeHtml(displayValue(item.measure))}</strong>${chineseReferenceHtml(item.measure, { compact: true, required: true })}<p>${escapeHtml(state.language === 'en' ? 'Time frame' : '时间范围')}：${escapeHtml(displayValue(item.timeFrame))}</p>${chineseReferenceHtml(item.timeFrame, { compact: true, required: true })}${item.description ? `<p>${escapeHtml(item.description)}</p>${chineseReferenceHtml(item.description, { compact: true, required: true })}` : ''}</li>`).join('')
     : `<li class="outcome-item"><p>${escapeHtml(state.language === 'en' ? 'Secondary outcome measures are not disclosed.' : '未公开次要结局指标。')}</p></li>`
   const timeline = study.timeline.length
     ? study.timeline.map((item) => `<li class="outcome-item"><strong>${escapeHtml(displayValue(item.date))} · ${escapeHtml(localizedTimelineTitle(item.title))}</strong><p>${escapeHtml(localizedTimelineDetail(item.title, item.detail))}</p></li>`).join('')
@@ -634,7 +711,7 @@ function renderDetail(study) {
         <span class="badge">${escapeHtml(study.hasResults ? tr('hasResults') : tr('noResults'))}</span>
       </div>
       <h3>${escapeHtml(study.officialTitle)}</h3>
-      ${chineseReferenceHtml(study.officialTitle)}
+      ${chineseReferenceHtml(study.officialTitle, { required: true })}
       <p>${escapeHtml(localizedPlainSummary(study))}</p>
       <div class="detail-source-row">
         <span>${escapeHtml(tr('updated', { date: displayValue(study.dates.lastUpdatePosted) }))}</span>
@@ -650,12 +727,12 @@ function renderDetail(study) {
         <dl class="detail-item"><dt>${escapeHtml(tr('studyPhase'))}</dt><dd>${escapeHtml(displayPhase(study))}</dd></dl>
         <dl class="detail-item"><dt>${escapeHtml(tr('studyType'))}</dt><dd>${escapeHtml(displayStudyType(study))}</dd></dl>
         <dl class="detail-item"><dt>${escapeHtml(tr('enrollment'))}</dt><dd>${study.enrollment.count ? escapeHtml(tr('estimatedPeople', { type: displayEnrollmentType(study.enrollment.type, study.enrollment.typeLabel), count: numberText(study.enrollment.count) })) : escapeHtml(tr('unknown'))}</dd></dl>
-        <dl class="detail-item"><dt>${escapeHtml(tr('treatmentSummary'))}</dt><dd>${escapeHtml(displayValue(study.durationSummary))}${chineseReferenceHtml(study.durationSummary, { compact: true })}</dd></dl>
+        <dl class="detail-item"><dt>${escapeHtml(tr('treatmentSummary'))}</dt><dd>${clinicalFieldHtml(study.durationSummary, { required: true })}</dd></dl>
       </div>
       <details class="disclosure">
         <summary>${escapeHtml(tr('expandSummary'))}</summary>
         <div class="original-text">${escapeHtml(displayValue(study.registeredSummary))}</div>
-        ${chineseReferenceHtml(study.registeredSummary)}
+        ${chineseReferenceHtml(study.registeredSummary, { required: true })}
       </details>
     </section>
 
@@ -671,6 +748,8 @@ function renderDetail(study) {
 
     <section class="detail-section">
       <h3><span>03</span>${escapeHtml(tr('section03'))}</h3>
+      ${armGroups ? `<h4>${escapeHtml(state.language === 'en' ? 'Study arms' : '研究分组')}</h4><ul class="intervention-list">${armGroups}</ul>` : ''}
+      ${armGroups ? `<h4 style="margin-top:16px">${escapeHtml(state.language === 'en' ? 'Interventions' : '干预措施')}</h4>` : ''}
       <ul class="intervention-list">${interventions}</ul>
       <p class="plain-summary">${escapeHtml(tr('durationCaution'))}</p>
     </section>
@@ -685,7 +764,7 @@ function renderDetail(study) {
         <dl class="detail-item"><dt>${escapeHtml(tr('lastSubmitted'))}</dt><dd>${escapeHtml(displayValue(study.dates.lastUpdateSubmitted))}</dd></dl>
         <dl class="detail-item"><dt>${escapeHtml(tr('lastPosted'))}</dt><dd>${escapeHtml(displayValue(study.dates.lastUpdatePosted))}</dd></dl>
       </div>
-      ${study.whyStopped ? `<p class="results-alert" style="margin:14px 0 0">${escapeHtml(tr('stopReason', { reason: study.whyStopped }))}</p>` : ''}
+      ${study.whyStopped ? `<p class="results-alert" style="margin:14px 0 0">${escapeHtml(tr('stopReason', { reason: study.whyStopped }))}</p>${chineseReferenceHtml(study.whyStopped, { compact: true, required: true })}` : ''}
       <ul class="outcome-list" style="margin-top:14px">${timeline}</ul>
     </section>
 
@@ -699,7 +778,7 @@ function renderDetail(study) {
     <section class="detail-section">
       <h3><span>06</span>${escapeHtml(tr('section06'))}</h3>
       <div class="eligibility-intro">
-        <div><span>${escapeHtml(tr('age'))}</span><strong>${escapeHtml(displayValue(study.eligibility.minimumAge))} - ${escapeHtml(displayValue(study.eligibility.maximumAge))}</strong></div>
+        <div><span>${escapeHtml(tr('age'))}</span><strong>${escapeHtml(displayValue(study.eligibility.minimumAge))} - ${escapeHtml(displayValue(study.eligibility.maximumAge))}</strong>${chineseReferenceHtml(study.eligibility.minimumAge, { compact: true, required: true })}${chineseReferenceHtml(study.eligibility.maximumAge, { compact: true, required: true })}</div>
         <div><span>${escapeHtml(tr('sex'))}</span><strong>${escapeHtml(displaySex(study.eligibility.sex, study.eligibility.sexLabel))}</strong></div>
         <div><span>${escapeHtml(tr('healthyVolunteers'))}</span><strong>${escapeHtml(study.eligibility.healthyVolunteers === '接受健康志愿者' ? tr('healthyYes') : tr('healthyNo'))}</strong></div>
       </div>
@@ -708,7 +787,7 @@ function renderDetail(study) {
       <details class="disclosure">
         <summary>${escapeHtml(tr('expandCriteria'))}</summary>
         <div class="original-text">${escapeHtml(study.eligibility.original || tr('unknown'))}</div>
-        ${chineseReferenceHtml(study.eligibility.original)}
+        ${chineseReferenceHtml(study.eligibility.original, { required: true })}
       </details>
     </section>
 

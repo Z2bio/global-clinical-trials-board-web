@@ -5,6 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   matchesClientFilters,
+  normalizeStudy,
   normalizeStudyList,
   sortStudies
 } from '../assets/js/normalizer.js'
@@ -46,4 +47,17 @@ test('filters and sorts normalized records safely', () => {
 
   const sorted = sortStudies(studies, 'enrollment-desc')
   assert.equal(sorted[0].nctId, 'NCT07654321')
+})
+
+test('preserves leading age numbers when splitting numbered eligibility criteria', () => {
+  const study = normalizeStudy({
+    protocolSection: {
+      identificationModule: { nctId: 'NCT07747337', briefTitle: 'Age test' },
+      statusModule: { overallStatus: 'RECRUITING' },
+      eligibilityModule: {
+        eligibilityCriteria: 'Inclusion Criteria:\n\n* 18 years or older.\n* 1. Signed consent.'
+      }
+    }
+  })
+  assert.deepEqual(study.eligibility.inclusion, ['18 years or older.', 'Signed consent.'])
 })

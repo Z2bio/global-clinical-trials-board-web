@@ -1,4 +1,4 @@
-const CACHE_NAME = 'clinical-trials-board-shell-v1.4.0'
+const CACHE_NAME = 'clinical-trials-board-shell-v1.7.0'
 const APP_SHELL = [
   './',
   './index.html',
